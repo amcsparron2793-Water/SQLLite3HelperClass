@@ -4,13 +4,15 @@ from logging import Logger
 
 class SQLlite3Helper:
     """ Initializes an SQLlite3 database and has a basic query method.
-    This class is meant to be subclassed and expanded."""
+    This class is meant to be subclassed and expanded.
+
+    IF NO LOGGER IS SPECIFIED, A DUMMY LOGGER IS USED. """
     def __init__(self, db_file_path: str, logger: Logger = None):
         if logger:
             self._logger = logger
         else:
             self._logger = Logger("fake")
-            print("DUMMY LOGGER IN USE")
+            # print("DUMMY LOGGER IN USE")
 
         self.db_file_path = db_file_path
         self._connection = None
