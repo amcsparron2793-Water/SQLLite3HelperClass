@@ -1,1 +1,1 @@
-from SQLLite3HelperClass import SQLLite3HelperClass
+from SQLLite3HelperClass.SQLLite3HelperClass import SQLlite3Helper
