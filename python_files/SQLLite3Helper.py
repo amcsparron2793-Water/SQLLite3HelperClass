@@ -20,11 +20,11 @@ class SQLlite3Helper:
 
     def GetConnectionAndCursor(self):
         try:
-            print(f"Attempting  to connect to {self.db_file_path}")
+            # print(f"Attempting  to connect to {self.db_file_path}")
             self._logger.info(f"Attempting  to connect to {self.db_file_path}")
             self._connection = sqlite3.connect(self.db_file_path)
 
-            print("Connection was successful")
+            # print("Connection was successful")
             self._logger.info("Connection was successful")
 
             self._cursor = self._connection.cursor()
