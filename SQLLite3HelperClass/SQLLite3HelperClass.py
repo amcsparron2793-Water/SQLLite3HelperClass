@@ -1,5 +1,7 @@
 import sqlite3
 from logging import Logger
+from typing import List
+from collections import ChainMap
 
 
 class SQLlite3Helper:
@@ -39,16 +41,51 @@ class SQLlite3Helper:
             self._logger.error(e, exc_info=True)
             raise e
 
-    def Query(self, sql_string: str):
+    @property
+    def results_column_names(self) -> List[str] or None:
+        try:
+            return [d[0] for d in self._cursor.description]
+        except AttributeError as e:
+            return None
+
+    def _ConvertToFinalListDict(self, results: List[tuple]) -> List[dict] or None:
+        row_list_dict = []
+        final_list_dict = []
+
+        for row in results:
+            if self.results_column_names:
+                for cell, col in zip(row, self.results_column_names):
+                    row_list_dict.append({col: cell})
+                final_list_dict.append(dict(ChainMap(*row_list_dict)))
+                row_list_dict.clear()
+            else:
+                raise AttributeError("A query has not been executed, "
+                                     "please execute a query before calling this function.")
+        if len(final_list_dict) > 0:
+            return final_list_dict
+        else:
+            return None
+
+    def Query(self, sql_string: str, **kwargs):
+        return_dict = False
+        if kwargs:
+            if 'return_dict' in kwargs:
+                return_dict = kwargs['return_dict']
         try:
             self._cursor.execute(sql_string)
+
             res = self._cursor.fetchall()
+
             if res:
                 self._logger.info(f"{len(res)} item(s) returned.")
-                return res
             else:
                 self._logger.warning(f"query returned no results")
-                return None
+
+            if return_dict:
+                return self._ConvertToFinalListDict(res)
+            else:
+                return res or None
+
         except sqlite3.IntegrityError as e:
             self._logger.error(e, exc_info=True)
             raise e
