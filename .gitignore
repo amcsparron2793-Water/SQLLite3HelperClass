@@ -4,3 +4,4 @@ __pycache__
 /venv/
 /dist/
 /SQLLite3HelperClass.egg-info/
+*.db
