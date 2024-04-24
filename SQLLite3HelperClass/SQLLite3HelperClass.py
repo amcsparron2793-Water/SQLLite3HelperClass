@@ -62,10 +62,10 @@ class SQLlite3Helper:
                 raise AttributeError("A query has not been executed, "
                                      "please execute a query before calling this function.")
         if len(final_list_dict) > 0:
-            return final_list_dict
+            # this returns a sorted list dict instead of an unsorted list dict
+            return [dict(sorted(x.items())) for x in final_list_dict]
         else:
             return None
-
     def Query(self, sql_string: str, **kwargs):
         return_dict = False
         if kwargs:
