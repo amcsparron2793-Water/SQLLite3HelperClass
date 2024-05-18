@@ -19,6 +19,29 @@ class SQLlite3Helper:
         self.db_file_path = db_file_path
         self._connection = None
         self._cursor = None
+        self._query_results = None
+
+    @property
+    def query_results(self):
+        return self._query_results
+
+    @query_results.setter
+    def query_results(self, value: List[dict] or None):
+        self._query_results = value
+
+    @property
+    def list_dict_results(self):
+        if self.query_results:
+            return self._ConvertToFinalListDict(self.query_results)
+        else:
+            return None
+
+    @property
+    def results_column_names(self) -> List[str] or None:
+        try:
+            return [d[0] for d in self._cursor.description]
+        except AttributeError as e:
+            return None
 
     def GetConnectionAndCursor(self):
         try:
@@ -41,13 +64,6 @@ class SQLlite3Helper:
             self._logger.error(e, exc_info=True)
             raise e
 
-    @property
-    def results_column_names(self) -> List[str] or None:
-        try:
-            return [d[0] for d in self._cursor.description]
-        except AttributeError as e:
-            return None
-
     def _ConvertToFinalListDict(self, results: List[tuple]) -> List[dict] or None:
         row_list_dict = []
         final_list_dict = []
@@ -66,11 +82,7 @@ class SQLlite3Helper:
         else:
             return None
 
-    def Query(self, sql_string: str, **kwargs):
-        return_dict = False
-        if kwargs:
-            if 'return_dict' in kwargs:
-                return_dict = kwargs['return_dict']
+    def Query(self, sql_string: str):
         try:
             self._cursor.execute(sql_string)
 
@@ -80,11 +92,7 @@ class SQLlite3Helper:
                 self._logger.info(f"{len(res)} item(s) returned.")
             else:
                 self._logger.warning(f"query returned no results")
-
-            if return_dict:
-                return self._ConvertToFinalListDict(res)
-            else:
-                return res or None
+            self.query_results = res
 
         except sqlite3.IntegrityError as e:
             self._logger.error(e, exc_info=True)
