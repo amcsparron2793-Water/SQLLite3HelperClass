@@ -55,6 +55,9 @@ class SQLlite3Helper:
             self._cursor = self._connection.cursor()
             self._logger.debug("Cursor created, returning tuple of connection and cursor.")
 
+            self._cursor.execute("PRAGMA foreign_keys = ON;")
+            self._connection.commit()
+
             return self._connection, self._cursor
 
         except sqlite3.IntegrityError as e:
