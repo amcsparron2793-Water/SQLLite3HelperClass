@@ -2,10 +2,10 @@ from setuptools import setup
 
 setup(
     name='SQLLite3HelperClass',
-    version='1.1',
+    version='1.2',
     packages=['SQLLite3HelperClass'],
     url='https://github.com/amcsparron2793-Water/SQLLite3HelperClass',
-    download_url='https://github.com/amcsparron2793-Water/SQLLite3HelperClass/archive/refs/tags/1.1.tar.gz',
+    download_url='https://github.com/amcsparron2793-Water/SQLLite3HelperClass/archive/refs/tags/1.2.tar.gz',
     keywords=["Sqlite3", "database"],
     license='MIT License',
     author='Amcsparron',
