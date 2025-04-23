@@ -1,5 +1,5 @@
 import sqlite3
-from logging import Logger, getLogger
+from logging import Logger, getLogger, basicConfig
 from typing import List, Union
 from pathlib import Path
 from collections import ChainMap
@@ -14,7 +14,8 @@ class SQLlite3Helper:
         if logger:
             self._logger = logger
         else:
-            self._logger = Logger("fake")
+            self._logger = getLogger(self.__class__.__name__)
+            basicConfig(level='DEBUG', filename=self._logger.name+".log")
             # print("DUMMY LOGGER IN USE")
 
         self.db_file_path = db_file_path
