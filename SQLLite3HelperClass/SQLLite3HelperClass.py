@@ -1,6 +1,7 @@
 import sqlite3
-from logging import Logger
-from typing import List
+from logging import Logger, getLogger
+from typing import List, Union
+from pathlib import Path
 from collections import ChainMap
 
 
@@ -9,7 +10,7 @@ class SQLlite3Helper:
     This class is meant to be subclassed and expanded.
 
     IF NO LOGGER IS SPECIFIED, A DUMMY LOGGER IS USED. """
-    def __init__(self, db_file_path: str, logger: Logger = None):
+    def __init__(self, db_file_path: Union[str, Path], logger: Logger = None):
         if logger:
             self._logger = logger
         else:
@@ -53,9 +54,11 @@ class SQLlite3Helper:
             self._logger.info("Connection was successful")
 
             self._cursor = self._connection.cursor()
-            self._logger.debug("Cursor created, returning tuple of connection and cursor.")
+            self._logger.debug("Cursor created.")
 
             self._cursor.execute("PRAGMA foreign_keys = ON;")
+            self._logger.debug("PRAGMA foreign_keys set to ON")
+            self._logger.info("Returning tuple of connection and cursor.")
             self._connection.commit()
 
             return self._connection, self._cursor
