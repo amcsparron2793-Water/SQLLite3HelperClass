@@ -107,3 +107,112 @@ class SQLlite3Helper:
         except sqlite3.OperationalError as e:
             self._logger.error(e, exc_info=True)
             raise e
+
+
+class _NoTrackedTablesError(Exception):
+    ...
+
+
+# noinspection SqlNoDataSourceInspection
+class CreateTriggersSQLLite(SQLlite3Helper):
+    TABLES_TO_TRACK = []
+    # TODO: needs a way to add the audit_log table
+
+    @classmethod
+    def has_tracked_tables(cls):
+        return bool(cls.TABLES_TO_TRACK)
+
+    def __init_subclass__(cls, **kwargs):
+        if cls.has_tracked_tables():
+            return cls(**kwargs)
+        else:
+            raise _NoTrackedTablesError("No tables have been specified to track. "
+                                        "Please specify tables to track in the TABLES_TO_TRACK class variable.")
+
+
+    def _has_trigger(self, table):
+        self.Query(f"""select tbl_name 
+                        from sqlite_master 
+                        where type='trigger' 
+                            and tbl_name='{table}'""")
+        if self.query_results:
+            return True
+        return False
+
+    def _get_column_names(self, table):
+        self.Query(f"""SELECT p.name as columnName
+                        FROM sqlite_master m
+                        left outer join pragma_table_info((m.name)) p
+                            on m.name <> p.name
+                        where m.name = '{table}';""")
+        if self.query_results:
+            return [x[0] for x in self.query_results]
+
+    def create_triggers_for_table(self, table_name, columns):
+        # FIXME: 3.8 issue
+        # Generate the json_object content using explicit column names
+        new_row_json = f"json_object({', '.join([f"'{col}', NEW.{col}" for col in columns])})"
+        old_row_json = f"json_object({', '.join([f"'{col}', OLD.{col}" for col in columns])})"
+
+        # INSERT Trigger for table_name
+        self._cursor.execute(f"""
+        CREATE TRIGGER after_{table_name}_insert
+        AFTER INSERT ON {table_name}
+        BEGIN
+            INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
+            VALUES (
+                '{table_name}', 
+                'INSERT', 
+                NULL, 
+                {new_row_json}
+            );
+        END;
+        """)
+
+        # UPDATE Trigger for table_name
+        self._cursor.execute(f"""
+        CREATE TRIGGER after_{table_name}_update
+        AFTER UPDATE ON {table_name}
+        BEGIN
+            INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
+            VALUES (
+                '{table_name}', 
+                'UPDATE', 
+                {old_row_json}, 
+                {new_row_json}
+            );
+        END;
+        """)
+
+        # DELETE Trigger for table_name
+        self._cursor.execute(f"""
+        CREATE TRIGGER after_{table_name}_delete
+        AFTER DELETE ON {table_name}
+        BEGIN
+            INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
+            VALUES (
+                '{table_name}', 
+                'DELETE', 
+                {old_row_json}, 
+                NULL
+            );
+        END;
+        """)
+
+    def generate_triggers_for_all_tables(self):
+        self._logger.info(f"Attempting to generate triggers for {len(self.__class__.TABLES_TO_TRACK)} tables")
+
+        for table in self.__class__.TABLES_TO_TRACK:
+            if not self._has_trigger(table):
+                self.create_triggers_for_table(table, self._get_column_names(table))
+                self._logger.debug(f'triggers for {table} created')
+                print(f'triggers for {table} created')
+            else:
+                print(f'{table} already has triggers')
+                self._logger.debug(f'{table} already has triggers')
+
+        self._logger.info('triggers generated successfully')
+
+        self._logger.info('committing triggers')
+        self._connection.commit()
+        self._logger.info('triggers committed successfully')
