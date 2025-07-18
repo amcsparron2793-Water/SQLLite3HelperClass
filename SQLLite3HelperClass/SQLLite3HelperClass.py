@@ -5,6 +5,15 @@ from pathlib import Path
 from collections import ChainMap
 
 
+class _NoTrackedTablesError(Exception):
+    DEFAULT_ERR_MSG = ("No tables have been specified to track. "
+                       "Please specify tables to track in the TABLES_TO_TRACK class variable.")
+    def __init__(self, msg=None):
+        if not msg:
+            msg = _NoTrackedTablesError.DEFAULT_ERR_MSG
+        super().__init__(msg)
+
+
 class SQLlite3Helper:
     """ Initializes an SQLlite3 database and has a basic query method.
     This class is meant to be subclassed and expanded.
@@ -109,26 +118,47 @@ class SQLlite3Helper:
             raise e
 
 
-class _NoTrackedTablesError(Exception):
-    ...
-
-
 # noinspection SqlNoDataSourceInspection
 class CreateTriggersSQLLite(SQLlite3Helper):
     TABLES_TO_TRACK = []
-    # TODO: needs a way to add the audit_log table
+    AUDIT_LOG_CREATE_TABLE = """create table audit_log
+                                (
+                                    id           INTEGER
+                                        primary key autoincrement,
+                                    table_name   TEXT not null,
+                                    operation    TEXT not null,
+                                    old_row_data TEXT,
+                                    new_row_data TEXT,
+                                    change_time  TIMESTAMP default CURRENT_TIMESTAMP
+                                );"""
+    AUDIT_LOG_CREATED_CHECK = "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log';"
+
+    def __init__(self, db_file_path: Union[str, Path]):
+        super().__init__(db_file_path)
+        if not self.has_audit_log_table:
+            self._create_audit_log_table()
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if not cls.has_tracked_tables():
+            raise _NoTrackedTablesError()
+
+    def _create_audit_log_table(self):
+        self.GetConnectionAndCursor()
+        self._cursor.execute(self.__class__.AUDIT_LOG_CREATE_TABLE)
+        self._connection.commit()
+        self._logger.info("Audit log table created.")
 
     @classmethod
     def has_tracked_tables(cls):
         return bool(cls.TABLES_TO_TRACK)
 
-    def __init_subclass__(cls, **kwargs):
-        if cls.has_tracked_tables():
-            return cls(**kwargs)
-        else:
-            raise _NoTrackedTablesError("No tables have been specified to track. "
-                                        "Please specify tables to track in the TABLES_TO_TRACK class variable.")
-
+    @property
+    def has_audit_log_table(self):
+        self.Query(self.__class__.AUDIT_LOG_CREATED_CHECK)
+        if self.query_results:
+            return True
+        return False
 
     def _has_trigger(self, table):
         self.Query(f"""select tbl_name 
@@ -149,6 +179,7 @@ class CreateTriggersSQLLite(SQLlite3Helper):
             return [x[0] for x in self.query_results]
 
     def create_triggers_for_table(self, table_name, columns):
+        # TODO: put these long queries in a class attr?
         # FIXME: 3.8 issue
         # Generate the json_object content using explicit column names
         new_row_json = f"json_object({', '.join([f"'{col}', NEW.{col}" for col in columns])})"

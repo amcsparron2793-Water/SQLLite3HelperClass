@@ -1,1 +1,1 @@
-from SQLLite3HelperClass.SQLLite3HelperClass import SQLlite3Helper
+from SQLLite3HelperClass.SQLLite3HelperClass import SQLlite3Helper, CreateTriggersSQLLite
