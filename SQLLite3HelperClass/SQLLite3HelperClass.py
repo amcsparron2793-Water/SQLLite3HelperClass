@@ -134,6 +134,48 @@ class CreateTriggersSQLLite(SQLlite3Helper):
                                 );"""
     AUDIT_LOG_CREATED_CHECK = "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_log';"
 
+    INSERT_TRIGGER = """
+            CREATE TRIGGER after_{table_name}_insert
+            AFTER INSERT ON {table_name}
+            BEGIN
+                INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
+                VALUES (
+                    '{table_name}', 
+                    'INSERT', 
+                    NULL, 
+                    {new_row_json}
+                );
+            END;
+            """
+
+    UPDATE_TRIGGER = """
+            CREATE TRIGGER after_{table_name}_update
+            AFTER UPDATE ON {table_name}
+            BEGIN
+                INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
+                VALUES (
+                    '{table_name}', 
+                    'UPDATE', 
+                    {old_row_json}, 
+                    {new_row_json}
+                );
+            END;
+            """
+
+    DELETE_TRIGGER = """
+        CREATE TRIGGER after_{table_name}_delete
+        AFTER DELETE ON {table_name}
+        BEGIN
+            INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
+            VALUES (
+                '{table_name}', 
+                'DELETE', 
+                {old_row_json}, 
+                NULL
+            );
+        END;
+        """
+
     def __init__(self, db_file_path: Union[str, Path]):
         super().__init__(db_file_path)
         if not self.has_audit_log_table:
@@ -195,53 +237,24 @@ class CreateTriggersSQLLite(SQLlite3Helper):
         return new_row_json, old_row_json
 
     def create_triggers_for_table(self, table_name, columns):
-        # TODO: put these long queries in a class attr?
         new_row_json, old_row_json = self._get_row_json(columns)
 
         # INSERT Trigger for table_name
-        self._cursor.execute(f"""
-        CREATE TRIGGER after_{table_name}_insert
-        AFTER INSERT ON {table_name}
-        BEGIN
-            INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
-            VALUES (
-                '{table_name}', 
-                'INSERT', 
-                NULL, 
-                {new_row_json}
-            );
-        END;
-        """)
+        insert_trigger_query = self.__class__.INSERT_TRIGGER.format(table_name=table_name,
+                                                                    new_row_json=new_row_json)
+        self._cursor.execute(insert_trigger_query)
 
         # UPDATE Trigger for table_name
-        self._cursor.execute(f"""
-        CREATE TRIGGER after_{table_name}_update
-        AFTER UPDATE ON {table_name}
-        BEGIN
-            INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
-            VALUES (
-                '{table_name}', 
-                'UPDATE', 
-                {old_row_json}, 
-                {new_row_json}
-            );
-        END;
-        """)
+        update_trigger_query = self.__class__.UPDATE_TRIGGER.format(table_name=table_name,
+                                                                    old_row_json=old_row_json,
+                                                                    new_row_json=new_row_json)
+        self._cursor.execute(update_trigger_query)
 
         # DELETE Trigger for table_name
-        self._cursor.execute(f"""
-        CREATE TRIGGER after_{table_name}_delete
-        AFTER DELETE ON {table_name}
-        BEGIN
-            INSERT INTO audit_log (table_name, operation, old_row_data, new_row_data)
-            VALUES (
-                '{table_name}', 
-                'DELETE', 
-                {old_row_json}, 
-                NULL
-            );
-        END;
-        """)
+        delete_trigger_query = self.__class__.DELETE_TRIGGER.format(table_name=table_name,
+                                                                    old_row_json=old_row_json)
+        self._cursor.execute(delete_trigger_query)
+        # TODO: warning not committed automatically?
 
     def generate_triggers_for_all_tables(self):
         self._logger.info(f"Attempting to generate triggers for {len(self.__class__.TABLES_TO_TRACK)} tables")
