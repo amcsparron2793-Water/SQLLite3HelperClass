@@ -1,3 +1,4 @@
+from sys import version_info as PyVersionInfo
 import sqlite3
 from logging import Logger, getLogger
 from typing import List, Union
@@ -178,12 +179,24 @@ class CreateTriggersSQLLite(SQLlite3Helper):
         if self.query_results:
             return [x[0] for x in self.query_results]
 
+    @staticmethod
+    def _get_row_json(columns):
+        if PyVersionInfo.major >= 3 and PyVersionInfo.minor >= 9:
+            # Generate the json_object content using explicit column names
+            new_row_json = f"json_object({', '.join([f"'{col}', NEW.{col}" for col in columns])})"
+            old_row_json = f"json_object({', '.join([f"'{col}', OLD.{col}" for col in columns])})"
+        else:
+            new_row_json = "json_object({})".format(
+                ', '.join(["'{}', NEW.{}".format(col, col) for col in columns])
+            )
+            old_row_json = "json_object({})".format(
+                ', '.join(["'{}', OLD.{}".format(col, col) for col in columns])
+            )
+        return new_row_json, old_row_json
+
     def create_triggers_for_table(self, table_name, columns):
         # TODO: put these long queries in a class attr?
-        # FIXME: 3.8 issue
-        # Generate the json_object content using explicit column names
-        new_row_json = f"json_object({', '.join([f"'{col}', NEW.{col}" for col in columns])})"
-        old_row_json = f"json_object({', '.join([f"'{col}', OLD.{col}" for col in columns])})"
+        new_row_json, old_row_json = self._get_row_json(columns)
 
         # INSERT Trigger for table_name
         self._cursor.execute(f"""
