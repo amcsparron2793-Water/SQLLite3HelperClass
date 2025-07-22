@@ -1,7 +1,7 @@
 __pycache__
 /logs
 /.idea/
-/venv/
+/venv*/
 /dist/
 /SQLLite3HelperClass.egg-info/
 *.db
