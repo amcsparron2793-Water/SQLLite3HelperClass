@@ -38,6 +38,11 @@ class SQLLite3HelperClassTest(unittest.TestCase):
         self.sql = SQLLite3HelperClass.SQLlite3Helper(SQLLite3HelperClassTest.TEST_DB_PATH)
         self.sql.GetConnectionAndCursor()
 
+    def tearDown(self):
+        super().tearDown()
+        # this allows tearDownClass to delete the test database
+        self.sql._connection.close()
+
     def test_no_res_returns_none(self):
         self.sql.Query(SQLLite3HelperClassTest.SELECT_IMPOSSIBLE_ID_SQL)
         try:
@@ -69,8 +74,6 @@ class SQLLite3HelperClassTest(unittest.TestCase):
             print(f'{e} as expected')
             did_err = True
         self.assertTrue(did_err)
-        # this allows tearDownClass to delete the test database
-        self.sql._connection.close()
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ from collections import ChainMap
 class _NoTrackedTablesError(Exception):
     DEFAULT_ERR_MSG = ("No tables have been specified to track. "
                        "Please specify tables to track in the TABLES_TO_TRACK class variable.")
+
     def __init__(self, msg=None):
         if not msg:
             msg = _NoTrackedTablesError.DEFAULT_ERR_MSG
@@ -285,6 +286,7 @@ class CreateTriggersSQLLite(SQLlite3Helper):
 
     def __init__(self, db_file_path: Union[str, Path]):
         super().__init__(db_file_path)
+
         if not self.has_audit_log_table:
             self._create_audit_log_table()
 
@@ -300,7 +302,6 @@ class CreateTriggersSQLLite(SQLlite3Helper):
         :return: None
         :rtype: None
         """
-        self.GetConnectionAndCursor()
         self._cursor.execute(self.__class__.AUDIT_LOG_CREATE_TABLE)
         self._connection.commit()
         self._logger.info("Audit log table created.")
@@ -324,6 +325,8 @@ class CreateTriggersSQLLite(SQLlite3Helper):
         :return: True if the audit log table exists, False otherwise
         :rtype: bool
         """
+        if not self._connection or not self._cursor:
+            self.GetConnectionAndCursor()
         self.Query(self.__class__.AUDIT_LOG_CREATED_CHECK)
         if self.query_results:
             return True
