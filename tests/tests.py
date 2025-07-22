@@ -1,4 +1,6 @@
 import unittest
+from logging import Logger
+
 import SQLLite3HelperClass.SQLLite3HelperClass as SQLLite3HelperClass
 from sqlite3 import OperationalError, IntegrityError
 from pathlib import Path
@@ -71,6 +73,9 @@ class SQLLite3HelperClassTest(unittest.TestCase):
         self.assertTrue(did_err)
         # this allows tearDownClass to delete the test database
         self.sql._connection.close()
+
+    def test_has_logger(self):
+        self.assertIsInstance(self.sql._logger, Logger)
 
 
 if __name__ == '__main__':
